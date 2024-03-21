@@ -1,0 +1,52 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2024-03-21T20:21:32+01:00",
+    "name": "Rimworld Together",
+    "author": "bluemage385@gmail.com",
+    "description": "Ever wondered how would it be to be able to play with other players online in the same Rimworld world?\r\n\"Rimworld Together\" is a community project founded by people who want to push the idea further!\r\n\r\nhttps:\/\/github.com\/Nova-Atomic\/Rimworld-Together",
+    "features": null,
+    "docker_images": {
+        "Dotnet 7": "ghcr.io\/parkervcp\/yolks:dotnet_7"
+    },
+    "file_denylist": [],
+    "startup": ".\/GameServer",
+    "config": {
+        "files": "{\r\n    \"Core\/ServerConfig.json\": {\r\n        \"parser\": \"json\",\r\n        \"find\": {\r\n            \"IP\": \"0.0.0.0\",\r\n            \"Port\": \"{{server.build.default.port}}\",\r\n            \"MaxPlayers\": \"{{server.build.env.MAX_PLAYER_COUNT}}\",\r\n            \"VerboseLogs\": true\r\n        }\r\n    }\r\n}",
+        "startup": "{\r\n    \"done\": \"Server launched\"\r\n}",
+        "logs": "{}",
+        "stop": "quit"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!\/bin\/bash\r\n\r\n# Service variables\r\nRED=\"\\033[1;31m\"\r\nYELLOW=\"\\033[1;33m\"\r\nLBLUE=\"\\033[1;34m\"\r\nNC=\"\\033[0m\"\r\nWARN=$(echo -ne \"${RED}\" ; printf '=%.0s' {1..80} ; echo -e \"${NC}\" )\r\n\r\n# Create the server directory\r\nmkdir -p \/mnt\/server\r\ncd \/mnt\/server\r\n\r\napt update\r\napt -y install curl jq unzip\r\n\r\necho -e \"*** Installing ${YELLOW}Rimworld Together${NC}, please wait... ***\"\r\n\r\n# Check for latest release & download URLs\r\nLATEST_JSON=$(curl --silent \"https:\/\/api.github.com\/repos\/Byte-Nova\/Rimworld-Together\/releases\/latest\")\r\nLATEST_VERSION=$(echo ${LATEST_JSON} | jq -r '.tag_name')\r\nRELEASES=$(curl --silent \"https:\/\/api.github.com\/repos\/Byte-Nova\/Rimworld-Together\/releases\")\r\nARCH=$([[ \"$(uname -m)\" == \"x86_64\" ]] && echo \"linux-x64\" || echo \"linux-arm-x64\")\r\n\r\nif [ -z \"${SERVER_VERSION}\" ] || [ \"${SERVER_VERSION}\" == \"latest\" ]; then\r\n    echo -e \"*** Installing latest version, ${YELLOW}${LATEST_VERSION}${NC}! ***\"\r\n    DOWNLOAD_URL=$(echo ${LATEST_JSON} | jq -r '.assets[].browser_download_url' | grep -i ${ARCH} | head -1)\r\nelse\r\n    # note: VERSION_CHECK will either be empty or contain the version number.\r\n    VERSION_CHECK=$(echo ${RELEASES} | jq -r --arg VERSION \"${SERVER_VERSION}\" '.[] | select(.tag_name==$VERSION) | .tag_name')\r\n\r\n    if [ \"${SERVER_VERSION}\" == \"${VERSION_CHECK}\" ]; then\r\n        echo -e \"*** Server version ${LBLUE}${SERVER_VERSION}${NC} found, installing! ***\"\r\n        DOWNLOAD_URL=$(echo ${RELEASES} | jq -r --arg VERSION \"${SERVER_VERSION}\" '.[] | select(.tag_name==$VERSION) | .assets[].browser_download_url' | grep -i ${ARCH} | head -1)\r\n    else\r\n        echo -e \"${WARN}\\nServer version ${LBLUE}${SERVER_VERSION}${NC} ${RED}not found${NC}.\\nInstalling latest version, ${YELLOW}${LATEST_VERSION}${NC} instead.\\n${WARN}\"\r\n        DOWNLOAD_URL=$(echo ${LATEST_JSON} | jq -r '.assets[].browser_download_url' | grep -i ${ARCH} | head -1)\r\n    fi\r\nfi\r\n\r\n# Download Rimworld Together, unzip, and set the correct file permissions\r\necho \"*** Downloading server file: ${DOWNLOAD_URL} ***\"\r\ncurl -sSL ${DOWNLOAD_URL} -o ${ARCH}.zip\r\nunzip -o ${ARCH}.zip\r\nchmod +x \"GameServer\"\r\nrm -rf ${ARCH}.zip\r\necho \"*** Finished downloading server! ***\"\r\n\r\nFILE=\"\/mnt\/server\/Core\/ServerConfig.json\"\r\nif [ ! -f \"${FILE}\" ]; then\r\necho -e \"\\n${WARN}\\n${RED}WARNING - FIRST-TIME SETUP${NC}\\n${WARN}\\n\"\r\necho -e \"Config file ${LBLUE}ServerConfig.json${NC} does not exist! Creating it in advance, assuming this is a new server.\"\r\necho -e \"Please ${YELLOW}run the server once${NC} to generate the remaining config files, ${YELLOW}stop the server${NC},\"\r\necho -e \"${YELLOW}edit the config files${NC} to your liking, and then ${YELLOW}reboot the server${NC}.\"\r\necho -e \"The config files are placed in the ${YELLOW}\/Core\/${NC} folder.\\n${WARN}\"\r\n\r\nmkdir -pv \/mnt\/server\/Core\r\ncat << EOF > \"${FILE}\"\r\n{\r\n  \"IP\": \"0.0.0.0\",\r\n  \"Port\": \"25555\",\r\n  \"MaxPlayers\": \"100\",\r\n  \"VerboseLogs\": false\r\n}\r\nEOF\r\nfi\r\n\r\necho -e \"*** Installation complete - Press \\\"${YELLOW}Start${NC}\\\" to begin your adventures on the Rim! ***\"",
+            "container": "debian:bullseye-slim",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Server Version",
+            "description": "Set a dedicated server version, or type \"latest\" to get the latest version. Takes effect when reinstalling the server.",
+            "env_variable": "SERVER_VERSION",
+            "default_value": "latest",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:12",
+            "field_type": "text"
+        },
+        {
+            "name": "Max Player Count",
+            "description": "The maximum number of players able to connect to the server at once.",
+            "env_variable": "MAX_PLAYER_COUNT",
+            "default_value": "10",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|int",
+            "field_type": "text"
+        }
+    ]
+}
